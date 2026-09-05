@@ -352,7 +352,7 @@ module.exports = async (req, res) => {
         expires_human: (v.expires_at != null && !isNaN(v.expires_at)) ? new Date(v.expires_at * 1000).toISOString().replace('T', ' ').slice(0, 19) : 'Invalid',
         max_devices: v.max_devices || 1, device_count: Object.keys(v.devices || {}).length,
         use_count: v.use_count || 0, currency: v.currency || 999999999,
-        days_left: Math.max(0, Math.floor((v.expires_at - Date.now() / 1000) / 86400))
+        days_left: (v.expires_at != null && !isNaN(v.expires_at)) ? Math.max(0, Math.floor((v.expires_at - Date.now() / 1000) / 86400)) : 0
       }));
       return res.json({ ok: true, keys, settings: db.settings || { currency: 999999999 } });
     }
@@ -369,7 +369,7 @@ module.exports = async (req, res) => {
       if (!db.history) db.history = [];
       db.history.push({ key, days, max_devices: md, currency: cr, created_at: now, created_human: (now != null && !isNaN(now)) ? new Date(now * 1000).toISOString().replace('T', ' ').slice(0, 19) : 'Invalid' });
       saveDB(db);
-      return res.json({ ok: true, key, days, max_devices: md, currency: cr, expires_human: new Date((now + days * 86400) * 1000).toISOString().replace('T', ' ').slice(0, 19) });
+      const expTs = (now != null && !isNaN(now) && days != null && !isNaN(days)) ? now + days * 86400 : null;      return res.json({ ok: true, key, days, max_devices: md, currency: cr, expires_human: expTs != null ? new Date(expTs * 1000).toISOString().replace('T', ' ').slice(0, 19) : 'Invalid' });
     }
     if (act === 'delete') { const b = await readBody(req); if (db.keys[b.key]) { delete db.keys[b.key]; saveDB(db); return res.json({ ok: true }); } return res.json({ ok: false, error: 'Key not found' }); }
     if (act === 'toggle') { const b = await readBody(req); if (db.keys[b.key]) { db.keys[b.key].is_active = !db.keys[b.key].is_active; saveDB(db); return res.json({ ok: true, is_active: db.keys[b.key].is_active }); } return res.json({ ok: false, error: 'Key not found' }); }
