@@ -3,7 +3,7 @@ const path = require('path');
 const crypto = require('crypto');
 
 const DB_FILE = path.join('/tmp', 'cheatgpt_keys.json');
-const PAYLOAD_URL = 'https://payfury-gpt.vercel.app/payload/libBEZO.so.xz';
+const PAYLOAD_URL = 'https://putramode.store/payload/libBEZO.so.xz;
 const PACKAGE = 'com.dts.freefiremax';
 
 function loadDB() {
