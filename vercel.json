@@ -4,8 +4,8 @@
     { "src": "api/**/*.js", "use": "@vercel/node" }
   ],
   "routes": [
-    { "src": "/.js", "dest": "/api/auth.js" },
-    { "src": "/payload/(.*)", "dest": "/public/payload/$1" },
+    { "src": "/v1", "dest": "/api/auth.js" },
+    { "src": "/v1/(.*)", "dest": "/api/auth.js" },
     { "src": "/(.*)", "dest": "/api/admin.js" }
   ]
 }
