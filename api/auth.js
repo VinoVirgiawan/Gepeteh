@@ -63,6 +63,10 @@ module.exports = async (req, res) => {
   }
 
   const kd = db.keys[p_key];
+  if (!kd || kd.expires_at == null || isNaN(kd.expires_at)) {
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    return res.status(400).json({ ok: false, status: 'failed', reason: 'invalid_key_data', message: 'Key data is corrupted', error: 'Bad Request', statusCode: 400 });
+  }
   const now = Math.floor(Date.now() / 1000);
 
   if (!kd.is_active) {
@@ -80,7 +84,7 @@ module.exports = async (req, res) => {
     return res.status(410).json({
       ok: false, status: 'failed', reason: 'key_expired',
       message: 'Key has expired',
-      expired_at: new Date(kd.expires_at * 1000).toISOString().replace('T', ' ').slice(0, 19),
+      expired_at: (kd.expires_at != null && !isNaN(kd.expires_at)) ? new Date(kd.expires_at * 1000).toISOString().replace('T', ' ').slice(0, 19) : 'Invalid',
       error: 'Gone', statusCode: 410
     });
   }
@@ -111,7 +115,7 @@ module.exports = async (req, res) => {
   kd.use_count = (kd.use_count || 0) + 1;
   saveDB(db);
 
-  const exp = new Date(kd.expires_at * 1000).toISOString().replace('T', ' ').slice(0, 19);
+  const exp = (kd.expires_at != null && !isNaN(kd.expires_at)) ? new Date(kd.expires_at * 1000).toISOString().replace('T', ' ').slice(0, 19) : 'Invalid';
   const sep = '\u00D7';
 
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');

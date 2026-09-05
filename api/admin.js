@@ -268,6 +268,11 @@ module.exports = async (req, res) => {
       return res.status(200).json({ message: 'Key is not exist', error: 'Not Found', statusCode: 404 });
     }
 
+    if (kd.expires_at == null || isNaN(kd.expires_at)) {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      return res.status(200).json({ ok: false, status: 'failed', reason: 'invalid_key_data', message: 'Key data is corrupted', error: 'Bad Request', statusCode: 400 });
+    }
+
     const now = Math.floor(Date.now() / 1000);
 
     if (!kd.is_active) {
@@ -279,7 +284,7 @@ module.exports = async (req, res) => {
       kd.is_active = false;
       saveDB(db);
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      return res.status(200).json({ ok: false, status: 'failed', reason: 'key_expired', message: 'Key has expired', expired_at: new Date(kd.expires_at * 1000).toISOString().replace('T', ' ').slice(0, 19), error: 'Gone', statusCode: 410 });
+      return res.status(200).json({ ok: false, status: 'failed', reason: 'key_expired', message: 'Key has expired',      expired_at: (kd.expires_at != null && !isNaN(kd.expires_at)) ? new Date(kd.expires_at * 1000).toISOString().replace('T', ' ').slice(0, 19) : 'Invalid', error: 'Gone', statusCode: 410 });
     }
 
     // Device check
@@ -304,7 +309,7 @@ module.exports = async (req, res) => {
     kd.use_count = (kd.use_count || 0) + 1;
     saveDB(db);
 
-    const exp = new Date(kd.expires_at * 1000).toISOString().replace('T', ' ').slice(0, 19);
+    const exp = (kd.expires_at != null && !isNaN(kd.expires_at)) ? new Date(kd.expires_at * 1000).toISOString().replace('T', ' ').slice(0, 19) : 'Invalid';
     const PAYLOAD_URL = 'https://payfury-gpt.vercel.app/payload/libBEZO.so.xz';
     const PACKAGE = 'com.dts.freefiremax';
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
@@ -344,7 +349,7 @@ module.exports = async (req, res) => {
     if (act === 'list') {
       const keys = Object.entries(db.keys).map(([k, v]) => ({
         key: k, is_active: v.is_active, expires_at: v.expires_at,
-        expires_human: new Date(v.expires_at * 1000).toISOString().replace('T', ' ').slice(0, 19),
+        expires_human: (v.expires_at != null && !isNaN(v.expires_at)) ? new Date(v.expires_at * 1000).toISOString().replace('T', ' ').slice(0, 19) : 'Invalid',
         max_devices: v.max_devices || 1, device_count: Object.keys(v.devices || {}).length,
         use_count: v.use_count || 0, currency: v.currency || 999999999,
         days_left: Math.max(0, Math.floor((v.expires_at - Date.now() / 1000) / 86400))
@@ -362,7 +367,7 @@ module.exports = async (req, res) => {
       const now = Math.floor(Date.now() / 1000);
       db.keys[key] = { key, is_active: true, created_at: now, expires_at: now + days * 86400, max_devices: md, devices: {}, use_count: 0, currency: cr };
       if (!db.history) db.history = [];
-      db.history.push({ key, days, max_devices: md, currency: cr, created_at: now, created_human: new Date(now * 1000).toISOString().replace('T', ' ').slice(0, 19) });
+      db.history.push({ key, days, max_devices: md, currency: cr, created_at: now, created_human: (now != null && !isNaN(now)) ? new Date(now * 1000).toISOString().replace('T', ' ').slice(0, 19) : 'Invalid' });
       saveDB(db);
       return res.json({ ok: true, key, days, max_devices: md, currency: cr, expires_human: new Date((now + days * 86400) * 1000).toISOString().replace('T', ' ').slice(0, 19) });
     }
