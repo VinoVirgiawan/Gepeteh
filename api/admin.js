@@ -40,7 +40,12 @@ async function readBody(req) {
   const bufs = [];
   for await (const c of req) bufs.push(c);
   const body = Buffer.concat(bufs).toString();
-  try { return JSON.parse(body); } catch (e) { return {}; }
+  try { return JSON.parse(body); } catch (e) {
+    const params = new URLSearchParams(body);
+    const obj = {};
+    for (const [k, v] of params) obj[k] = v;
+    return obj;
+  }
 }
 
 module.exports = async (req, res) => {
