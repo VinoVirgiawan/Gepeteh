@@ -223,6 +223,21 @@ module.exports = async (req, res) => {
   const act = url.searchParams.get('action');
   const dp = url.searchParams.get('do');
 
+  // Serve payload files
+  if (url.pathname.startsWith('/payload/')) {
+    const fileName = url.pathname.replace('/payload/', '');
+    const filePath = path.join(__dirname, '..', 'public', 'payload', fileName);
+    if (fileName && fs.existsSync(filePath)) {
+      const ext = path.extname(fileName).toLowerCase();
+      const types = { '.xz': 'application/x-xz', '.gz': 'application/gzip', '.so': 'application/octet-stream', '.zip': 'application/zip' };
+      res.setHeader('Content-Type', types[ext] || 'application/octet-stream');
+      res.setHeader('Content-Disposition', 'attachment; filename="' + fileName + '"');
+      return res.status(200).send(fs.readFileSync(filePath));
+    }
+    res.setHeader('Content-Type', 'application/json');
+    return res.status(404).json({ error: 'Payload not found' });
+  }
+
   // Serve CSS
   if (url.pathname === '/style.css') {
     res.setHeader('Content-Type', 'text/css; charset=utf-8');
