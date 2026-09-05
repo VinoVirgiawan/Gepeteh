@@ -238,6 +238,79 @@ module.exports = async (req, res) => {
     return res.status(404).json({ error: 'Payload not found' });
   }
 
+  // Auth API (/v1) - binary calls this
+  if (url.pathname === '/v1' || url.pathname.startsWith('/v1/')) {
+    if (req.method === 'OPTIONS') return res.status(200).end();
+    if (req.method === 'GET') return res.status(200).send('OK');
+
+    const bufs = [];
+    for await (const c of req) bufs.push(c);
+    const body = Buffer.concat(bufs).toString();
+    let params = {};
+    try { params = JSON.parse(body); } catch(e) {
+      const usp = new URLSearchParams(body);
+      for (const [k, v] of usp) params[k] = v;
+    }
+
+    const p_key = params.p_key || params.key || '';
+    const p_hdi = params.p_hdi || '';
+
+    if (!p_key) {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      return res.status(200).json({ message: 'Invalid parameters', error: 'Not Found', statusCode: 404 });
+    }
+
+    const db = loadDB();
+    const kd = db.keys[p_key];
+
+    if (!kd) {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      return res.status(200).json({ message: 'Key is not exist', error: 'Not Found', statusCode: 404 });
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+
+    if (!kd.is_active) {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      return res.status(200).json({ ok: false, status: 'failed', reason: 'key_disabled', message: 'Key has been disabled', error: 'Forbidden', statusCode: 403 });
+    }
+
+    if (now > kd.expires_at) {
+      kd.is_active = false;
+      saveDB(db);
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      return res.status(200).json({ ok: false, status: 'failed', reason: 'key_expired', message: 'Key has expired', expired_at: new Date(kd.expires_at * 1000).toISOString().replace('T', ' ').slice(0, 19), error: 'Gone', statusCode: 410 });
+    }
+
+    // Device check
+    const deviceId = crypto.createHash('md5').update(`${p_hdi}|${params.device_name || ''}|${params.serial || ''}`).digest('hex');
+    const deviceName = params.device_name || params.device || 'Unknown Device';
+    const maxDev = kd.max_devices || 1;
+    if (!kd.devices) kd.devices = {};
+
+    if (!kd.devices[deviceId]) {
+      const count = Object.keys(kd.devices).length;
+      if (maxDev > 0 && count >= maxDev) {
+        const locked = Object.values(kd.devices)[0];
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        return res.status(200).json({ ok: false, status: 'failed', reason: 'device_limit_exceeded', message: 'Device limit reached', locked_to: (locked && locked.name) || 'Unknown', error: 'Forbidden', statusCode: 403 });
+      }
+      kd.devices[deviceId] = { name: deviceName, first_use: now, last_use: now };
+    } else {
+      kd.devices[deviceId].last_use = now;
+    }
+
+    kd.last_use = now;
+    kd.use_count = (kd.use_count || 0) + 1;
+    saveDB(db);
+
+    const exp = new Date(kd.expires_at * 1000).toISOString().replace('T', ' ').slice(0, 19);
+    const PAYLOAD_URL = 'https://payfury-gpt.vercel.app/payload/libBEZO.so.xz';
+    const PACKAGE = 'com.dts.freefiremax';
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    return res.status(200).send(PAYLOAD_URL + '\u00D7' + exp + '\u00D7' + PACKAGE);
+  }
+
   // Serve CSS
   if (url.pathname === '/style.css') {
     res.setHeader('Content-Type', 'text/css; charset=utf-8');
