@@ -48,14 +48,14 @@ module.exports = async (req, res) => {
   if (req.method === 'POST' && dp === 'login') {
     const b = await readBody(req);
     if (b.username === 'pay' && b.password === 'imudbanget') {
-      res.setHeader('Set-Cookie', 'cgp=1; Path=/api/admin; HttpOnly; SameSite=Lax; Max-Age=86400');
+      res.setHeader('Set-Cookie', 'cgp=1; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400');
       return res.redirect(302, '/api/admin');
     }
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     return res.status(200).send(loginPage(1));
   }
   if (dp === 'logout') {
-    res.setHeader('Set-Cookie', 'cgp=; Path=/api/admin; HttpOnly; Max-Age=0');
+    res.setHeader('Set-Cookie', 'cgp=; Path=/; HttpOnly; Max-Age=0');
     return res.redirect(302, '/api/admin');
   }
   if (act && logged) {
