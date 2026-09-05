@@ -105,6 +105,6 @@ module.exports = async (req, res) => {
     return res.status(200).send(loginPage(0));
   }
 
-  // Logged in but no action → let Vercel serve public/index.html
-  return res.status(404).end();
+  // Logged in but no action → redirect to dashboard
+  return res.redirect(302, '/');
 };
